@@ -7,6 +7,7 @@ from titles import *
 from PIL import Image
 from streamlit.components.v1 import html
 import datetime
+import sqlalchemy as db
 
 
 options = [
@@ -109,9 +110,12 @@ if 'ended' not in st.session_state:
     sessionstateinit("kapcsolat_minoseg")
     sessionstateinit("munkakor")
     sessionstateinit("kitoltes_ideje")
+    sessionstateinit("felhasznalonev")
 
      
     if st.session_state['step'] == 1:
+
+        st.session_state['felhasznalonev'] = st.text_input("Kérem, adjon meg egy felhasználónevet!", value=None)
                       
         st.session_state['szuletesi_datum'] = st.date_input("Kérem, adja meg a születési dátumát!", min_value="1900-01-01", value=None)
         
@@ -120,6 +124,7 @@ if 'ended' not in st.session_state:
         st.session_state['munkakor'] = st.selectbox("Milyen jellegű munkát végez?",['Felsővezető', 'Középvezető', 'Beosztott', 'Egyéni vállalkozó', 'Egyéb'], index= None,placeholder="Válasszon a lehetőségek közül!")
 
         if (st.session_state['munkakor'] != None and
+            st.session_state['felhasznalonev'] != None and
             st.session_state['szuletesi_datum'] != None and
             st.session_state['neme'] != None):
             
@@ -736,33 +741,75 @@ if 'ended' not in st.session_state:
         
         st.session_state['kitoltes_ideje'] = datetime.datetime.now()
 
-        existing_file = 'jolletfelmeres.xlsx'
+        # conn = st.connection('wellnesssurvey_db', type='sql')
 
-        # New data to append
-        b = [st.session_state['kitoltes_ideje'],
-                st.session_state['szuletesi_datum'],
-                st.session_state['neme'],
-                st.session_state['munkakor'],
-                st.session_state['egeszseg_finalscore'],
-                st.session_state['taplalkozas_finalscore'], 
-                st.session_state['testmozgas_finalscore'], 
-                st.session_state['alvas_finalscore'],
-                st.session_state['karosszenvedely_finalscore'],
-                st.session_state['erzelmi_egeszseg_finalscore'],
-                st.session_state['szellemi_egeszseg_finalscore'],
-                st.session_state['tarsasagi_kapcsolatok_finalscore']]
-        db = pd.DataFrame(b)
-        db = db.T
-        # db.to_excel("jolletfelmeres.xlsx", index = False, header = False)
+        engine = db.create_engine('sqlite:///wellnesssurvey4.db')
+        conn = engine.connect()
+        metadata = db.MetaData()
+
+        Survey = db.Table('Survey', metadata,
+                    db.Column('Felhasználónév', db.String(),primary_key=True),      
+                    db.Column('Kitöltés_ideje', db.Date(),primary_key=True),
+                    db.Column('Születési_dátum', db.Date(), primary_key=True),
+                    db.Column('Neme', db.String(), primary_key=False),
+                    db.Column('Munkakör', db.String(), primary_key=False),
+                    db.Column('Egészség', db.Integer(), primary_key=False),
+                    db.Column('Táplálkozás', db.Integer(), primary_key=False),
+                    db.Column('Testmozgás', db.Integer(), primary_key=False),
+                    db.Column('Alvás', db.Integer(), primary_key=False),
+                    db.Column('Káros_szenvedély', db.Integer(), primary_key=False),
+                    db.Column('Érzelmi_egészség', db.Integer(), primary_key=False),
+                    db.Column('Szellemi_egészség', db.Integer(), primary_key=False),
+                    db.Column('Társas_kapcsolatok', db.Integer(), primary_key=False)
+                    )
+
+        metadata.create_all(engine) 
+
+        query = db.insert(Survey).values(
+            Felhasználónév= st.session_state['felhasznalonev'],
+            Kitöltés_ideje = st.session_state['kitoltes_ideje'], 
+            Születési_dátum=st.session_state['szuletesi_datum'],
+            Neme=st.session_state['neme'],
+            Munkakör=st.session_state['munkakor'],
+            Egészség=st.session_state['egeszseg_finalscore'],
+            Táplálkozás=st.session_state['taplalkozas_finalscore'], 
+            Testmozgás=st.session_state['testmozgas_finalscore'], 
+            Alvás=st.session_state['alvas_finalscore'],
+            Káros_szenvedély=st.session_state['karosszenvedely_finalscore'],
+            Érzelmi_egészség=st.session_state['erzelmi_egeszseg_finalscore'],
+            Szellemi_egészség=st.session_state['szellemi_egeszseg_finalscore'],
+            Társas_kapcsolatok=st.session_state['tarsasagi_kapcsolatok_finalscore']
+            )
+        Result = conn.execute(query)
+       
+
+        # existing_file = 'jolletfelmeres.xlsx'
+
+        # # New data to append
+        # b = [st.session_state['kitoltes_ideje'],
+        #         st.session_state['szuletesi_datum'],
+        #         st.session_state['neme'],
+        #         st.session_state['munkakor'],
+        #         st.session_state['egeszseg_finalscore'],
+        #         st.session_state['taplalkozas_finalscore'], 
+        #         st.session_state['testmozgas_finalscore'], 
+        #         st.session_state['alvas_finalscore'],
+        #         st.session_state['karosszenvedely_finalscore'],
+        #         st.session_state['erzelmi_egeszseg_finalscore'],
+        #         st.session_state['szellemi_egeszseg_finalscore'],
+        #         st.session_state['tarsasagi_kapcsolatok_finalscore']]
+        # db = pd.DataFrame(b)
+        # db = db.T
+        # # db.to_excel("jolletfelmeres.xlsx", index = False, header = False)
         
-        # Read existing data
-        df_existing = pd.read_excel(existing_file)
+        # # Read existing data
+        # df_existing = pd.read_excel(existing_file)
 
-        # Append new data
-        df_combined = pd.concat([df_existing, db], ignore_index=True)
+        # # Append new data
+        # df_combined = pd.concat([df_existing, db], ignore_index=True)
 
-        # Save the combined data to Excel
-        df_combined.to_excel(existing_file, index=False)
+        # # Save the combined data to Excel
+        # df_combined.to_excel(existing_file, index=False)
         
 
 
