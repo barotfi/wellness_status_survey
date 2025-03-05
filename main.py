@@ -736,8 +736,7 @@ if 'ended' not in st.session_state:
         
         st.session_state['kitoltes_ideje'] = datetime.datetime.now()
 
-        existing_file = 'https://docs.google.com/spreadsheets/d/1gVNCbamZMgK62KXG2l4enHrJEy_aosnu/edit?usp=drive_link&ouid=117437952949804426677&rtpof=true&sd=true'
-
+        existing_file = 'jolletfelmeres.xlsx'
         # New data to append
         b = [st.session_state['kitoltes_ideje'],
                 st.session_state['szuletesi_datum'],
