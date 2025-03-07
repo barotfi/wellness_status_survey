@@ -8,6 +8,9 @@ from PIL import Image
 from streamlit.components.v1 import html
 import datetime
 import sqlalchemy as db
+from sqlalchemy import Table, Column, Integer, String, Date, MetaData
+import sqlitecloud
+
 
 
 options = [
@@ -741,46 +744,114 @@ if 'ended' not in st.session_state:
         
         st.session_state['kitoltes_ideje'] = datetime.datetime.now()
 
-        # conn = st.connection('wellnesssurvey_db', type='sql')
+        
+        # Connect to SQLite Cloud database
+        cloud_conn = sqlitecloud.connect(
+            "sqlitecloud://chabidxphz.g2.sqlite.cloud:8860/WellnessSurvey?apikey=7SEWz2HmF8ZXBeMqZtloHXzjs2CrsL2bStfRIm0xZFQ"
+        )
 
-        engine = db.create_engine('sqlite:///wellnesssurvey4.db')
-        conn = engine.connect()
-        metadata = db.MetaData()
+        # Function to create a table in SQLite Cloud
+        def create_survey_table(conn):
+            create_table_query = """
+            CREATE TABLE IF NOT EXISTS Survey (
+                Felhasználónév TEXT PRIMARY KEY,
+                Kitöltés_ideje DATE NOT NULL,
+                Születési_dátum DATE NOT NULL,
+                Neme TEXT,
+                Munkakör TEXT,
+                Egészség INTEGER,
+                Táplálkozás INTEGER,
+                Testmozgás INTEGER,
+                Alvás INTEGER,
+                Káros_szenvedély INTEGER,
+                Érzelmi_egészség INTEGER,
+                Szellemi_egészség INTEGER,
+                Társas_kapcsolatok INTEGER
+            );
+            """
+            conn.execute(create_table_query)
+            conn.commit()
 
-        Survey = db.Table('Survey', metadata,
-                    db.Column('Felhasználónév', db.String(),primary_key=True),      
-                    db.Column('Kitöltés_ideje', db.Date(),primary_key=True),
-                    db.Column('Születési_dátum', db.Date(), primary_key=True),
-                    db.Column('Neme', db.String(), primary_key=False),
-                    db.Column('Munkakör', db.String(), primary_key=False),
-                    db.Column('Egészség', db.Integer(), primary_key=False),
-                    db.Column('Táplálkozás', db.Integer(), primary_key=False),
-                    db.Column('Testmozgás', db.Integer(), primary_key=False),
-                    db.Column('Alvás', db.Integer(), primary_key=False),
-                    db.Column('Káros_szenvedély', db.Integer(), primary_key=False),
-                    db.Column('Érzelmi_egészség', db.Integer(), primary_key=False),
-                    db.Column('Szellemi_egészség', db.Integer(), primary_key=False),
-                    db.Column('Társas_kapcsolatok', db.Integer(), primary_key=False)
-                    )
+        # Create the table
+        create_survey_table(cloud_conn)
 
-        metadata.create_all(engine) 
+        # Function to insert data into the table
+        def insert_survey_data(conn, data):
+            insert_query = """
+            INSERT INTO Survey (
+                Felhasználónév, Kitöltés_ideje, Születési_dátum, Neme, Munkakör,
+                Egészség, Táplálkozás, Testmozgás, Alvás, Káros_szenvedély,
+                Érzelmi_egészség, Szellemi_egészség, Társas_kapcsolatok
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            """
+            conn.execute(insert_query, data)
+            conn.commit()
 
-        query = db.insert(Survey).values(
-            Felhasználónév= st.session_state['felhasznalonev'],
-            Kitöltés_ideje = st.session_state['kitoltes_ideje'], 
-            Születési_dátum=st.session_state['szuletesi_datum'],
-            Neme=st.session_state['neme'],
-            Munkakör=st.session_state['munkakor'],
-            Egészség=st.session_state['egeszseg_finalscore'],
-            Táplálkozás=st.session_state['taplalkozas_finalscore'], 
-            Testmozgás=st.session_state['testmozgas_finalscore'], 
-            Alvás=st.session_state['alvas_finalscore'],
-            Káros_szenvedély=st.session_state['karosszenvedely_finalscore'],
-            Érzelmi_egészség=st.session_state['erzelmi_egeszseg_finalscore'],
-            Szellemi_egészség=st.session_state['szellemi_egeszseg_finalscore'],
-            Társas_kapcsolatok=st.session_state['tarsasagi_kapcsolatok_finalscore']
-            )
-        Result = conn.execute(query)
+        # Example: Insert user-provided data into the table
+        user_data = (
+            st.session_state['felhasznalonev'],
+            st.session_state['kitoltes_ideje'],
+            st.session_state['szuletesi_datum'],
+            st.session_state['neme'],
+            st.session_state['munkakor'],
+            st.session_state['egeszseg_finalscore'],
+            st.session_state['taplalkozas_finalscore'],
+            st.session_state['testmozgas_finalscore'],
+            st.session_state['alvas_finalscore'],
+            st.session_state['karosszenvedely_finalscore'],
+            st.session_state['erzelmi_egeszseg_finalscore'],
+            st.session_state['szellemi_egeszseg_finalscore'],
+            st.session_state['tarsasagi_kapcsolatok_finalscore'],
+        )
+
+        try:
+            insert_survey_data(cloud_conn, user_data)
+            st.success("Data successfully added to the database!")
+        except Exception as e:
+            st.error(f"Failed to add data to the database: {e}")
+
+
+        # conn = st.connection('sqlitecloud://chabidxphz.g2.sqlite.cloud:8860/WellnessSurvey?apikey=7SEWz2HmF8ZXBeMqZtloHXzjs2CrsL2bStfRIm0xZFQ', type='sql')
+        # conn = sqlitecloud.connect("sqlitecloud://chabidxphz.g2.sqlite.cloud:8860/WellnessSurvey?apikey=7SEWz2HmF8ZXBeMqZtloHXzjs2CrsL2bStfRIm0xZFQ")
+
+        # engine = db.create_engine('WellnessSurvey2.db')
+        # conn = engine.connect()
+        # metadata = db.MetaData()
+
+        # Survey = db.Table('Survey', metadata,
+        #             db.Column('Felhasználónév', db.String(),primary_key=True),      
+        #             db.Column('Kitöltés_ideje', db.Date(),primary_key=True),
+        #             db.Column('Születési_dátum', db.Date(), primary_key=True),
+        #             db.Column('Neme', db.String(), primary_key=False),
+        #             db.Column('Munkakör', db.String(), primary_key=False),
+        #             db.Column('Egészség', db.Integer(), primary_key=False),
+        #             db.Column('Táplálkozás', db.Integer(), primary_key=False),
+        #             db.Column('Testmozgás', db.Integer(), primary_key=False),
+        #             db.Column('Alvás', db.Integer(), primary_key=False),
+        #             db.Column('Káros_szenvedély', db.Integer(), primary_key=False),
+        #             db.Column('Érzelmi_egészség', db.Integer(), primary_key=False),
+        #             db.Column('Szellemi_egészség', db.Integer(), primary_key=False),
+        #             db.Column('Társas_kapcsolatok', db.Integer(), primary_key=False)
+        #             )
+
+        # metadata.create_all(engine) 
+
+        # query = db.insert(Survey).values(
+        #     Felhasználónév= st.session_state['felhasznalonev'],
+        #     Kitöltés_ideje = st.session_state['kitoltes_ideje'], 
+        #     Születési_dátum=st.session_state['szuletesi_datum'],
+        #     Neme=st.session_state['neme'],
+        #     Munkakör=st.session_state['munkakor'],
+        #     Egészség=st.session_state['egeszseg_finalscore'],
+        #     Táplálkozás=st.session_state['taplalkozas_finalscore'], 
+        #     Testmozgás=st.session_state['testmozgas_finalscore'], 
+        #     Alvás=st.session_state['alvas_finalscore'],
+        #     Káros_szenvedély=st.session_state['karosszenvedely_finalscore'],
+        #     Érzelmi_egészség=st.session_state['erzelmi_egeszseg_finalscore'],
+        #     Szellemi_egészség=st.session_state['szellemi_egeszseg_finalscore'],
+        #     Társas_kapcsolatok=st.session_state['tarsasagi_kapcsolatok_finalscore']
+        #     )
+        # Result = conn.execute(query)
        
 
         # existing_file = 'jolletfelmeres.xlsx'
