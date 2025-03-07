@@ -806,9 +806,9 @@ if 'ended' not in st.session_state:
 
         try:
             insert_survey_data(cloud_conn, user_data)
-            st.success("Data successfully added to the database!")
+            
         except Exception as e:
-            st.error(f"Failed to add data to the database: {e}")
+            st.error(f"Failure {e}")
 
 
         # conn = st.connection('sqlitecloud://chabidxphz.g2.sqlite.cloud:8860/WellnessSurvey?apikey=7SEWz2HmF8ZXBeMqZtloHXzjs2CrsL2bStfRIm0xZFQ', type='sql')
